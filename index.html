@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Detective Game</title>
+</head>
+
+<body>
+
+<h2>Вход в игру</h2>
+
+<input id="email" placeholder="email">
+<input id="password" type="password" placeholder="password">
+<button onclick="login()">Войти</button>
+
+<hr>
+
+<div id="game" style="display:none">
+
+<h2>Игра</h2>
+
+<p>Таймер: <span id="timer">0</span></p>
+<p>Поездки: <span id="rides">0</span></p>
+
+<input id="address" placeholder="Введите адрес">
+
+<button onclick="go()">Поехали</button>
+
+<h3>История поездок</h3>
+<ul id="history"></ul>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey: "YOUR_KEY",
+authDomain: "YOUR_PROJECT.firebaseapp.com",
+projectId: "YOUR_PROJECT"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let userId;
+let rides = 0;
+let seconds = 0;
+
+window.login = function(){
+
+const email = document.getElementById("email").value;
+const password = document.getElementById("password").value;
+
+signInWithEmailAndPassword(auth,email,password)
+.then(async (userCredential)=>{
+
+userId = userCredential.user.uid;
+
+document.getElementById("game").style.display="block";
+
+await setDoc(doc(db,"players",userId),{
+email:email,
+rides:0,
+history:[],
+time:0
+});
+
+});
+
+}
+
+window.go = async function(){
+
+const address = document.getElementById("address").value;
+
+rides++;
+
+document.getElementById("rides").innerText = rides;
+
+const li = document.createElement("li");
+li.innerText = address;
+
+document.getElementById("history").appendChild(li);
+
+await updateDoc(doc(db,"players",userId),{
+rides:rides,
+history:arrayUnion(address)
+});
+
+}
+
+setInterval(()=>{
+
+seconds++;
+
+document.getElementById("timer").innerText = seconds;
+
+},1000);
+
+</script>
+
+</body>
+</html>
