@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Admin Panel</title>
+</head>
+
+<body>
+
+<h1>Панель мастера</h1>
+
+<table border="1">
+<thead>
+<tr>
+<th>Email</th>
+<th>Поездки</th>
+<th>История</th>
+</tr>
+</thead>
+<tbody id="players"></tbody>
+</table>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+apiKey: "YOUR_KEY",
+authDomain: "YOUR_PROJECT.firebaseapp.com",
+projectId: "YOUR_PROJECT"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const table = document.getElementById("players");
+
+onSnapshot(collection(db,"players"),(snapshot)=>{
+
+table.innerHTML="";
+
+snapshot.forEach((doc)=>{
+
+const data = doc.data();
+
+const row = `
+<tr>
+<td>${data.email}</td>
+<td>${data.rides}</td>
+<td>${data.history.join(", ")}</td>
+</tr>
+`;
+
+table.innerHTML += row;
+
+});
+
+});
+
+</script>
+
+</body>
+</html>
