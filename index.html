@@ -13,14 +13,27 @@
 
 <hr>
 
-<div id="game" style="display:none">
-<h2>Игра</h2>
-<p>Таймер: <span id="timer">0</span></p>
-<p>Поездки: <span id="rides">0</span></p>
-<input id="address" placeholder="Введите адрес">
-<button id="goBtn">Поехали</button>
-<h3>История поездок</h3>
-<ul id="history"></ul>
+<div id="game" style="display:none; display:flex; flex-direction:column; height:450px; width:400px;">
+
+  <!-- Статус -->
+  <div id="status" style="display:flex; justify-content:space-between; margin-bottom:10px;">
+    <p>Таймер: <span id="timer">0</span></p>
+    <p>Поездки: <span id="rides">0</span></p>
+  </div>
+
+  <input id="address" placeholder="Введите адрес" style="margin-bottom:10px;">
+  <button id="goBtn" style="margin-bottom:10px;">Поехали</button>
+
+  <!-- История с прокруткой -->
+  <div id="historyContainer" style="
+      border:1px solid #000; 
+      padding:5px; 
+      height:200px; 
+      overflow-y:scroll;
+      background-color:#f5f5f5;">
+    <ul id="history" style="margin:0; padding-left:20px;"></ul>
+  </div>
+
 </div>
 
 <!-- Firebase compat -->
@@ -35,8 +48,7 @@ const firebaseConfig = {
   projectId: "detective-game-52acd",
   storageBucket: "detective-game-52acd.firebasestorage.app",
   messagingSenderId: "1074567510590",
-  appId: "1:1074567510590:web:f1a0e5960199b28cf62f6f",
-  measurementId: "G-3S323YJQ0D"
+  appId: "1:1074567510590:web:f1a0e5960199b28cf62f6f"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -44,52 +56,64 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 let userId;
-let rides = 0;
-let seconds = 0;
+let email;
 
 document.getElementById("loginBtn").addEventListener("click", async () => {
-  const email = document.getElementById("email").value;
+  email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
   try {
     const userCredential = await auth.signInWithEmailAndPassword(email, password);
     userId = userCredential.user.uid;
 
-    document.getElementById("game").style.display = "block";
+    document.getElementById("game").style.display = "flex";
 
+    // создаем/обновляем игрока
     await db.collection("players").doc(userId).set({
-      email: email,
-      rides: 0,
-      history: [],
-      time: 0
+      email: email
     }, { merge: true });
 
-    alert("Вход выполнен!");
-  } catch (error) {
-    alert("Ошибка: " + error.message);
+    // подписка на общий игровой прогресс
+    db.collection("game").doc("current").onSnapshot(doc => {
+      const data = doc.data();
+      if (!data) return;
+
+      // Таймер
+      document.getElementById("timer").innerText = data.timer || 0;
+
+      // Поездки игрока
+      const rides = data.rides && data.rides[userId] ? data.rides[userId] : 0;
+      document.getElementById("rides").innerText = rides;
+
+      // История
+      const historyUl = document.getElementById("history");
+      historyUl.innerHTML = "";
+      const hist = data.history && data.history[userId] ? data.history[userId] : [];
+      hist.forEach(addr => {
+        const li = document.createElement("li");
+        li.innerText = addr;
+        historyUl.appendChild(li);
+      });
+
+      // автопрокрутка
+      const container = document.getElementById("historyContainer");
+      container.scrollTop = container.scrollHeight;
+    });
+
+  } catch (err) {
+    alert("Ошибка: " + err.message);
   }
 });
 
 document.getElementById("goBtn").addEventListener("click", async () => {
   const address = document.getElementById("address").value;
 
-  rides++;
-  document.getElementById("rides").innerText = rides;
-
-  const li = document.createElement("li");
-  li.innerText = address;
-  document.getElementById("history").appendChild(li);
-
-  await db.collection("players").doc(userId).update({
-    rides: rides,
-    history: firebase.firestore.FieldValue.arrayUnion(address)
-  });
+  const gameRef = db.collection("game").doc("current");
+  await gameRef.set({
+    rides: { [userId]: firebase.firestore.FieldValue.increment(1) },
+    history: { [userId]: firebase.firestore.FieldValue.arrayUnion(address) }
+  }, { merge: true });
 });
-
-setInterval(() => {
-  seconds++;
-  document.getElementById("timer").innerText = seconds;
-}, 1000);
 </script>
 
 </body>
