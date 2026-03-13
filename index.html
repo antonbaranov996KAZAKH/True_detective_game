@@ -4,11 +4,9 @@
 <meta charset="UTF-8">
 <title>Detective Game</title>
 </head>
-
 <body>
 
 <h2>Вход в игру</h2>
-
 <input id="email" placeholder="email">
 <input id="password" type="password" placeholder="password">
 <button id="loginBtn">Войти</button>
@@ -16,94 +14,82 @@
 <hr>
 
 <div id="game" style="display:none">
-
 <h2>Игра</h2>
-
 <p>Таймер: <span id="timer">0</span></p>
 <p>Поездки: <span id="rides">0</span></p>
-
 <input id="address" placeholder="Введите адрес">
-
 <button id="goBtn">Поехали</button>
-
 <h3>История поездок</h3>
 <ul id="history"></ul>
-
 </div>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-  // Настройки твоего Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyDp_pIoFFvfHLp36eToVhD8lLmV5HT_czs",
-    authDomain: "detective-game-52acd.firebaseapp.com",
-    projectId: "detective-game-52acd",
-    storageBucket: "detective-game-52acd.firebasestorage.app",
-    messagingSenderId: "1074567510590",
-    appId: "1:1074567510590:web:f1a0e5960199b28cf62f6f",
-    measurementId: "G-3S323YJQ0D"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyDp_pIoFFvfHLp36eToVhD8lLmV5HT_czs",
+  authDomain: "detective-game-52acd.firebaseapp.com",
+  projectId: "detective-game-52acd",
+  storageBucket: "detective-game-52acd.firebasestorage.app",
+  messagingSenderId: "1074567510590",
+  appId: "1:1074567510590:web:f1a0e5960199b28cf62f6f",
+  measurementId: "G-3S323YJQ0D"
+};
 
-  // Инициализация Firebase
-  const app = firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-  let userId;
-  let rides = 0;
-  let seconds = 0;
+let userId;
+let rides = 0;
+let seconds = 0;
 
-  // Функция входа
-  document.getElementById("loginBtn").addEventListener("click", async () => {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-    try {
-      const userCredential = await auth.signInWithEmailAndPassword(email, password);
-      userId = userCredential.user.uid;
+  try {
+    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+    userId = userCredential.user.uid;
 
-      document.getElementById("game").style.display = "block";
+    document.getElementById("game").style.display = "block";
 
-      await db.collection("players").doc(userId).set({
-        email: email,
-        rides: 0,
-        history: [],
-        time: 0
-      }, { merge: true });
+    await db.collection("players").doc(userId).set({
+      email: email,
+      rides: 0,
+      history: [],
+      time: 0
+    }, { merge: true });
 
-      alert("Вход выполнен!");
-    } catch(error) {
-      alert("Ошибка: " + error.message);
-    }
+    alert("Вход выполнен!");
+  } catch (error) {
+    alert("Ошибка: " + error.message);
+  }
+});
+
+document.getElementById("goBtn").addEventListener("click", async () => {
+  const address = document.getElementById("address").value;
+
+  rides++;
+  document.getElementById("rides").innerText = rides;
+
+  const li = document.createElement("li");
+  li.innerText = address;
+  document.getElementById("history").appendChild(li);
+
+  await db.collection("players").doc(userId).update({
+    rides: rides,
+    history: firebase.firestore.FieldValue.arrayUnion(address)
   });
+});
 
-  // Функция поездки
-  document.getElementById("goBtn").addEventListener("click", async () => {
-    const address = document.getElementById("address").value;
-
-    rides++;
-    document.getElementById("rides").innerText = rides;
-
-    const li = document.createElement("li");
-    li.innerText = address;
-    document.getElementById("history").appendChild(li);
-
-    await db.collection("players").doc(userId).update({
-      rides: rides,
-      history: firebase.firestore.FieldValue.arrayUnion(address)
-    });
-  });
-
-  // Таймер
-  setInterval(()=>{
-    seconds++;
-    document.getElementById("timer").innerText = seconds;
-  },1000);
-
+setInterval(() => {
+  seconds++;
+  document.getElementById("timer").innerText = seconds;
+}, 1000);
 </script>
 
 </body>
