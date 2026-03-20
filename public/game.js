@@ -2,6 +2,7 @@
 let teamCode = '';
 let tripCounter = 0;
 let syncInterval = null;
+let timerUpdateInterval = null;
 
 // ================= УВЕДОМЛЕНИЯ =================
 function showNotification(message, type = 'info') {
@@ -17,13 +18,39 @@ function showNotification(message, type = 'info') {
   }, 3000);
 }
 
+// ================= ОБНОВЛЕНИЕ ТАЙМЕРА =================
+function updateTimerDisplay() {
+  fetch('/api/timer/status')
+    .then(res => res.json())
+    .then(data => {
+      const timerDisplay = document.getElementById('timerDisplay');
+      const timerValue = document.getElementById('timerValue');
+      
+      if (!timerDisplay || !timerValue) return;
+      
+      if (data.active && data.timeLeft > 0) {
+        const minutes = Math.floor(data.timeLeft / 60);
+        const seconds = data.timeLeft % 60;
+        timerValue.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        timerDisplay.className = 'timer-display active';
+      } else if (data.active && data.timeLeft <= 0) {
+        timerValue.textContent = '00:00';
+        timerDisplay.className = 'timer-display inactive';
+      } else {
+        timerValue.textContent = '00:00';
+        timerDisplay.className = 'timer-display inactive';
+      }
+    })
+    .catch(err => console.warn('Ошибка обновления таймера:', err));
+}
+
 // ================= ЛОГИН =================
 function login() {
   const code = document.getElementById('teamCode')?.value.trim();
   const pass = document.getElementById('adminPass')?.value.trim();
 
   if (pass) {
-    window.location.href = '/admin.html';
+    window.location.href = '/admin.php';
     return;
   }
 
@@ -58,6 +85,11 @@ function login() {
     
     // Запускаем синхронизацию
     startSync();
+    
+    // Запускаем обновление таймера
+    if (timerUpdateInterval) clearInterval(timerUpdateInterval);
+    timerUpdateInterval = setInterval(updateTimerDisplay, 1000);
+    updateTimerDisplay();
   })
   .catch(err => showNotification('Ошибка связи с сервером', 'error'));
 }
@@ -72,6 +104,10 @@ function stopSync() {
   if (syncInterval) {
     clearInterval(syncInterval);
     syncInterval = null;
+  }
+  if (timerUpdateInterval) {
+    clearInterval(timerUpdateInterval);
+    timerUpdateInterval = null;
   }
 }
 
@@ -94,7 +130,7 @@ function syncTeamData() {
     .catch(err => console.warn('Ошибка синхронизации:', err));
 }
 
-// ================= ПОЕЗДКА =================
+// ================= ПОЕЗДКА (с проверкой таймера) =================
 function goTrip() {
   const address = document.getElementById('addressInput').value.trim();
   if(!address) {
@@ -107,41 +143,60 @@ function goTrip() {
   goButton.disabled = true;
   goButton.textContent = '⏳ Отправка...';
 
-  fetch('/api/trip', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({teamCode, address})
-  })
-  .then(res => res.json())
-  .then(data => {
-    if(!data.success) {
-      showNotification(data.info, 'error');
-      return;
-    }
-    
-    showNotification('✅ ' + data.info, 'success');
-    
-    tripCounter = data.tripsHistory.length;
-    const tripsEl = document.getElementById('tripsLeft');
-    tripsEl.textContent = tripCounter;
-    
-    // Анимация
-    tripsEl.classList.remove('jump');
-    void tripsEl.offsetWidth;
-    tripsEl.classList.add('jump');
-    
-    updateHistory(data.tripsHistory);
-    document.getElementById('addressInput').value = '';
-  })
-  .catch(err => showNotification('❌ Ошибка связи с сервером', 'error'))
-  .finally(() => {
-    goButton.disabled = false;
-    goButton.textContent = originalText;
-  });
+  // Сначала проверяем статус таймера
+  fetch('/api/timer/status')
+    .then(res => res.json())
+    .then(timerData => {
+      if (!timerData.active || timerData.timeLeft <= 0) {
+        showNotification('⏰ Игровое время не активно! Дождитесь запуска таймера администратором.', 'error');
+        throw new Error('Таймер не активен');
+      }
+      
+      // Если таймер активен, отправляем поездку
+      return fetch('/api/trip', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({teamCode, address})
+      });
+    })
+    .then(res => {
+      if (!res) return;
+      return res.json();
+    })
+    .then(data => {
+      if (!data) return;
+      
+      if(!data.success) {
+        showNotification(data.info, 'error');
+        return;
+      }
+      
+      showNotification('✅ ' + data.info, 'success');
+      
+      tripCounter = data.tripsHistory.length;
+      const tripsEl = document.getElementById('tripsLeft');
+      tripsEl.textContent = tripCounter;
+      
+      // Анимация
+      tripsEl.classList.remove('jump');
+      void tripsEl.offsetWidth;
+      tripsEl.classList.add('jump');
+      
+      updateHistory(data.tripsHistory);
+      document.getElementById('addressInput').value = '';
+    })
+    .catch(err => {
+      if (err.message !== 'Таймер не активен') {
+        showNotification('❌ Ошибка связи с сервером', 'error');
+      }
+    })
+    .finally(() => {
+      goButton.disabled = false;
+      goButton.textContent = originalText;
+    });
 }
 
-// ================= ИСТОРИЯ (обновлена для работы с <br>) =================
-// ================= ИСТОРИЯ (хронологический порядок) =================
+// ================= ИСТОРИЯ =================
 function updateHistory(history) {
   const ul = document.getElementById('tripsHistory');
   if (!ul) return;
@@ -150,7 +205,7 @@ function updateHistory(history) {
 
   // Сортировка по времени (старые сверху)
   const sortedHistory = history
-    .slice(-100) // берём последние 30
+    .slice(-100)
     .sort((a, b) => new Date(a.time) - new Date(b.time));
 
   sortedHistory.forEach((h, index) => {
@@ -187,6 +242,7 @@ function updateHistory(history) {
   const historyBox = document.getElementById('history-box');
   if (historyBox) historyBox.scrollTop = historyBox.scrollHeight;
 }
+
 // ================= ВЫХОД =================
 function logout() {
   stopSync();
