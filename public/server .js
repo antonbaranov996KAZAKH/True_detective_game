@@ -1,46 +1,163 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Детективная игра</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
 
-<!-- Уведомления -->
-<div id="notification" class="notification" style="display:none;"></div>
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-<!-- Логин -->
-<div id="login-screen">
-  <h1>🔍 Детективная игра</h1>
-  <input type="text" id="teamCode" placeholder="Введите код команды">
-  <input type="password" id="adminPass" placeholder="Пароль админа">
-  <button onclick="login()">Войти</button>
-  <p style="text-align:center; margin-top:10px; color:#666; font-size:12px;">
-    Для админов: введите пароль для входа в панель управления
-  </p>
-</div>
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-<!-- Игровой экран -->
-<div id="game">
-  <div id="main-info">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <span>Команда: <b id="teamCodeDisplay"></b></span>
-      <span id="syncIndicator" style="font-size: 12px; color: #4CAF50;">✓ Синхронизация</span>
-    </div>
-    <span>Поездок: <b id="tripsLeft">0</b></span>
-    <input type="text" id="addressInput" placeholder="Введите адрес" onkeypress="if(event.key==='Enter') goTrip()">
-    <button onclick="goTrip()">🚗 Поехать</button>
-    <button onclick="logout()" style="background:#f44336;">🚪 Выйти</button>
-  </div>
+// ================= СОСТОЯНИЕ =================
+let teams = {};
+let gameState = {
+  endTime: null
+};
 
-  <div id="history-box">
-    <h3>📜 История поездок:</h3>
-    <ul id="tripsHistory"></ul>
-  </div>
-</div>
+const STATE_FILE = path.join(__dirname, 'game-state.json');
 
-<script src="game.js"></script>
-</body>
-</html>
+// ================= СОХРАНЕНИЕ =================
+function saveState() {
+  fs.writeFileSync(STATE_FILE, JSON.stringify({
+    teams,
+    gameState
+  }, null, 2));
+}
+
+function loadState() {
+  if (fs.existsSync(STATE_FILE)) {
+    const data = JSON.parse(fs.readFileSync(STATE_FILE));
+    teams = data.teams || {};
+    gameState = data.gameState || { endTime: null };
+  }
+}
+
+loadState();
+
+// ================= АДРЕСА =================
+const ADDRESS_FILE = path.join(__dirname, 'data', 'address.json');
+let addressMap = new Map();
+
+if (fs.existsSync(ADDRESS_FILE)) {
+  const addresses = JSON.parse(fs.readFileSync(ADDRESS_FILE));
+  addresses.forEach(item => {
+    addressMap.set(item.address.toLowerCase().trim(), item.info);
+  });
+}
+
+// ================= ЛОГИКА =================
+function isGameActive() {
+  return gameState.endTime && Date.now() < gameState.endTime;
+}
+
+// ================= API =================
+
+// Логин
+app.post('/api/login', (req, res) => {
+  const { teamCode } = req.body;
+
+  if (!teamCode) return res.json({ success: false });
+
+  if (!teams[teamCode]) {
+    teams[teamCode] = { tripsHistory: [] };
+  }
+
+  res.json({
+    success: true,
+    tripsHistory: teams[teamCode].tripsHistory
+  });
+});
+
+// Поездка
+app.post('/api/trip', (req, res) => {
+  const { teamCode, address } = req.body;
+
+  if (!teams[teamCode]) {
+    return res.json({ success: false, info: 'Команда не найдена' });
+  }
+
+  if (!isGameActive()) {
+    return res.json({ success: false, info: '⛔ Игра не запущена' });
+  }
+
+  const info = addressMap.get(address.toLowerCase().trim()) 
+    || 'Ничего не найдено';
+
+  const trip = {
+    time: new Date().toLocaleTimeString(),
+    address,
+    info,
+    timestamp: Date.now()
+  };
+
+  teams[teamCode].tripsHistory.push(trip);
+
+  saveState();
+
+  res.json({
+    success: true,
+    info,
+    tripsHistory: teams[teamCode].tripsHistory
+  });
+});
+
+// Статус игры
+app.get('/api/status', (req, res) => {
+  const active = isGameActive();
+
+  res.json({
+    active,
+    timeLeft: active ? gameState.endTime - Date.now() : 0
+  });
+});
+
+// ================= АДМИН =================
+
+// старт
+app.post('/api/admin/start', (req, res) => {
+  const { minutes } = req.body;
+
+  const duration = minutes * 60 * 1000;
+
+  gameState.endTime = Date.now() + duration;
+
+  saveState();
+
+  res.json({ success: true });
+});
+
+// стоп
+app.post('/api/admin/stop', (req, res) => {
+  gameState.endTime = null;
+  saveState();
+
+  res.json({ success: true });
+});
+
+// история
+app.get('/api/admin/history', (req, res) => {
+  let allTrips = [];
+
+  Object.keys(teams).forEach(team => {
+    teams[team].tripsHistory.forEach(trip => {
+      allTrips.push({ team, ...trip });
+    });
+  });
+
+  allTrips.sort((a, b) => b.timestamp - a.timestamp);
+
+  res.json({
+    allTrips,
+    totalTeams: Object.keys(teams).length
+  });
+});
+
+// ================= FRONT =================
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// ================= СТАРТ =================
+app.listen(PORT, () => {
+  console.log('🚀 Сервер запущен на порту', PORT);
+});
