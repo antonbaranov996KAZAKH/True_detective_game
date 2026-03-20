@@ -23,7 +23,6 @@ body {
   margin: 0 auto;
 }
 
-/* Карточки */
 .card {
   background: white;
   border-radius: 15px;
@@ -46,7 +45,6 @@ body {
   display: inline-block;
 }
 
-/* Таймер-панель */
 .timer-panel {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -94,7 +92,6 @@ body {
   box-shadow: 0 0 0 3px rgba(255,255,255,0.5);
 }
 
-/* Кнопки */
 .btn {
   padding: 12px 25px;
   font-size: 16px;
@@ -111,29 +108,14 @@ body {
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
-.btn:active {
-  transform: translateY(0);
-}
-
 .btn-start {
   background: #4CAF50;
 }
-.btn-start:hover {
-  background: #45a049;
-}
-
 .btn-stop {
   background: #f44336;
 }
-.btn-stop:hover {
-  background: #da190b;
-}
-
 .btn-reset {
   background: #ff9800;
-}
-.btn-reset:hover {
-  background: #e68900;
 }
 
 .timer-status {
@@ -154,7 +136,24 @@ body {
   color: #f44336;
 }
 
-/* История */
+.status-badge {
+  display: inline-block;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.status-active {
+  background: #4CAF50;
+  color: white;
+}
+
+.status-inactive {
+  background: #f44336;
+  color: white;
+}
+
 .history-list {
   max-height: 500px;
   overflow-y: auto;
@@ -190,39 +189,16 @@ body {
   margin-top: 5px;
 }
 
-/* Статус */
-.status-badge {
-  display: inline-block;
-  padding: 5px 15px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.status-active {
-  background: #4CAF50;
-  color: white;
-}
-
-.status-inactive {
-  background: #f44336;
-  color: white;
-}
-
-/* Адаптивность */
 @media (max-width: 768px) {
   .timer-controls {
     flex-direction: column;
   }
-  
   .time-input-group {
     width: 100%;
   }
-  
   .time-input-group input {
     width: 100%;
   }
-  
   .btn {
     width: 100%;
   }
@@ -269,77 +245,62 @@ body {
 </div>
 
 <script>
-// Функции управления таймером
 function startTimer() {
   const minutes = parseInt(document.getElementById('minutes').value) || 0;
   const seconds = parseInt(document.getElementById('seconds').value) || 0;
-  const totalSeconds = (minutes * 60) + seconds;
   
-  if (totalSeconds <= 0) {
-    alert('Пожалуйста, установите время больше 0 секунд');
+  if (minutes === 0 && seconds === 0) {
+    alert('Пожалуйста, установите время больше 0');
     return;
   }
   
   fetch('/api/timer/start', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({minutes, seconds: totalSeconds})
+    body: JSON.stringify({ minutes, seconds })
   })
   .then(res => res.json())
   .then(data => {
     if (data.success) {
-      showMessage('Таймер запущен!', 'success');
+      showMessage('✅ Таймер запущен!', 'success');
       loadStatus();
     } else {
-      showMessage('Ошибка запуска таймера', 'error');
+      showMessage('❌ Ошибка запуска', 'error');
     }
   })
-  .catch(err => showMessage('Ошибка связи с сервером', 'error'));
+  .catch(err => showMessage('❌ Ошибка сервера', 'error'));
 }
 
 function stopTimer() {
-  fetch('/api/timer/stop', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'}
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      showMessage('Таймер остановлен', 'success');
-      loadStatus();
-    } else {
-      showMessage('Ошибка остановки таймера', 'error');
-    }
-  })
-  .catch(err => showMessage('Ошибка связи с сервером', 'error'));
+  fetch('/api/timer/stop', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        showMessage('⏸ Таймер остановлен', 'success');
+        loadStatus();
+      }
+    });
 }
 
 function resetTimer() {
-  fetch('/api/timer/reset', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'}
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.success) {
-      showMessage('Таймер сброшен', 'success');
-      loadStatus();
-    } else {
-      showMessage('Ошибка сброса таймера', 'error');
-    }
-  })
-  .catch(err => showMessage('Ошибка связи с сервером', 'error'));
+  fetch('/api/timer/reset', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        showMessage('🔄 Таймер сброшен', 'success');
+        loadStatus();
+      }
+    });
 }
 
 function loadStatus() {
   fetch('/api/timer/status')
     .then(res => res.json())
     .then(data => {
-      // Обновляем статус таймера
       const statusEl = document.getElementById('timerStatus');
       const gameStatusEl = document.getElementById('gameStatus');
       
-      if (data.active) {
+      if (data.active && data.timeLeft > 0) {
         const minutes = Math.floor(data.timeLeft / 60);
         const seconds = data.timeLeft % 60;
         statusEl.innerHTML = `⏱ Активен: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
@@ -350,8 +311,7 @@ function loadStatus() {
         statusEl.className = 'timer-status inactive';
         gameStatusEl.innerHTML = '<span class="status-badge status-inactive">🔴 Игра остановлена</span>';
       }
-    })
-    .catch(err => console.warn('Ошибка загрузки статуса:', err));
+    });
 }
 
 function loadHistory() {
@@ -375,12 +335,10 @@ function loadHistory() {
         `;
       });
       historyDiv.innerHTML = html;
-    })
-    .catch(err => console.warn('Ошибка загрузки истории:', err));
+    });
 }
 
 function showMessage(msg, type) {
-  // Простое уведомление
   const notification = document.createElement('div');
   notification.textContent = msg;
   notification.style.cssText = `
@@ -395,34 +353,23 @@ function showMessage(msg, type) {
     animation: slideIn 0.3s ease;
   `;
   document.body.appendChild(notification);
-  setTimeout(() => {
-    notification.remove();
-  }, 3000);
+  setTimeout(() => notification.remove(), 3000);
 }
 
-// Добавляем стили для анимации
 const style = document.createElement('style');
 style.textContent = `
   @keyframes slideIn {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
   }
 `;
 document.head.appendChild(style);
 
-// Загружаем данные каждую секунду
 setInterval(() => {
   loadStatus();
   loadHistory();
 }, 1000);
 
-// Первоначальная загрузка
 loadStatus();
 loadHistory();
 </script>
