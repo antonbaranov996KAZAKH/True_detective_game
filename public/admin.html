@@ -20,7 +20,7 @@
   }
   
   .container {
-    max-width: 500px;
+    max-width: 1200px;
     margin: 0 auto;
   }
   
@@ -46,6 +46,12 @@
     display: inline-block;
     border-bottom: 2px solid rgba(255,255,255,0.3);
     padding-bottom: 6px;
+  }
+  
+  h3 {
+    font-size: 18px;
+    margin: 16px 0 12px 0;
+    color: #667eea;
   }
   
   .timer-controls {
@@ -125,6 +131,109 @@
   .status-active { background: #4CAF50; color: white; }
   .status-inactive { background: #f44336; color: white; }
   
+  /* Таблица команд */
+  .teams-stats {
+    display: grid;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  
+  .team-card {
+    background: #f8f9fa;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #e0e0e0;
+    transition: all 0.2s ease;
+  }
+  
+  .team-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  
+  .team-header:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a3f8f 100%);
+  }
+  
+  .team-name {
+    font-weight: bold;
+    font-size: 16px;
+  }
+  
+  .team-count {
+    background: rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+  }
+  
+  .team-triples {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    background: white;
+  }
+  
+  .team-triples.open {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  
+  .trips-list {
+    padding: 12px;
+  }
+  
+  .trip-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border-left: 3px solid #667eea;
+    font-size: 13px;
+  }
+  
+  .trip-address {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 4px;
+  }
+  
+  .trip-info-preview {
+    color: #666;
+    font-size: 12px;
+    margin: 4px 0;
+    word-break: break-word;
+  }
+  
+  .trip-time {
+    color: #999;
+    font-size: 10px;
+    margin-top: 4px;
+  }
+  
+  .empty-trips {
+    text-align: center;
+    color: #999;
+    padding: 20px;
+    font-size: 14px;
+  }
+  
+  .expand-icon {
+    font-size: 18px;
+    transition: transform 0.2s ease;
+  }
+  
+  .team-card.expanded .expand-icon {
+    transform: rotate(180deg);
+  }
+  
+  /* Общая история */
   .history-list {
     max-height: 400px;
     overflow-y: auto;
@@ -153,8 +262,15 @@
   
   .history-address {
     color: #666;
-    font-size: 14px;
+    font-size: 13px;
     margin: 6px 0;
+    word-break: break-word;
+  }
+  
+  .history-info-preview {
+    color: #888;
+    font-size: 12px;
+    margin: 4px 0;
     word-break: break-word;
   }
   
@@ -169,11 +285,7 @@
     padding: 30px;
   }
   
-  @media (max-width: 480px) {
-    body {
-      padding: 12px;
-    }
-    
+  @media (max-width: 768px) {
     .timer-controls {
       flex-direction: column;
     }
@@ -190,8 +302,16 @@
       font-size: 22px;
     }
     
-    h2 {
-      font-size: 18px;
+    .team-header {
+      padding: 10px 12px;
+    }
+    
+    .team-name {
+      font-size: 14px;
+    }
+    
+    .team-count {
+      font-size: 12px;
     }
   }
   
@@ -204,6 +324,12 @@
       transform: translateX(0);
       opacity: 1;
     }
+  }
+  
+  .loading {
+    text-align: center;
+    padding: 20px;
+    color: #999;
   }
 </style>
 </head>
@@ -239,7 +365,14 @@
   </div>
 
   <div class="card">
-    <h2>📊 История всех поездок</h2>
+    <h2>📊 Статистика команд</h2>
+    <div id="teamsStats" class="teams-stats">
+      <div class="loading">Загрузка...</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📜 История всех поездок</h2>
     <div id="history" class="history-list">
       <div class="empty-history">Загрузка...</div>
     </div>
@@ -247,6 +380,22 @@
 </div>
 
 <script>
+// Функция для сокращения текста до 20 символов
+function truncateText(text, maxLength = 20) {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
+
+// Функция для получения информации из поездки (первые 20 символов)
+function getTripPreview(info) {
+  if (!info) return '';
+  // Убираем переносы строк и берем первые 20 символов
+  const cleanInfo = info.replace(/\n/g, ' ').trim();
+  return truncateText(cleanInfo, 20);
+}
+
+// Запуск таймера
 function startTimer() {
   const minutes = parseInt(document.getElementById('minutes').value) || 0;
   const seconds = parseInt(document.getElementById('seconds').value) || 0;
@@ -303,6 +452,74 @@ function loadStatus() {
     });
 }
 
+function loadTeamsStats() {
+  fetch('/api/admin/history')
+    .then(res => res.json())
+    .then(data => {
+      const teamsStats = document.getElementById('teamsStats');
+      
+      if (!data.allTrips || data.allTrips.length === 0) {
+        teamsStats.innerHTML = '<div class="empty-history">📭 Пока нет поездок</div>';
+        return;
+      }
+      
+      // Группируем поездки по командам
+      const teamsMap = new Map();
+      data.allTrips.forEach(trip => {
+        if (!teamsMap.has(trip.team)) {
+          teamsMap.set(trip.team, []);
+        }
+        teamsMap.get(trip.team).push(trip);
+      });
+      
+      // Сортируем команды по количеству поездок (по убыванию)
+      const sortedTeams = Array.from(teamsMap.entries()).sort((a, b) => b[1].length - a[1].length);
+      
+      let html = '';
+      sortedTeams.forEach(([teamName, trips]) => {
+        const tripCount = trips.length;
+        const lastTrips = trips.slice(-5).reverse(); // Последние 5 поездок
+        
+        html += `
+          <div class="team-card" onclick="toggleTeam(this)">
+            <div class="team-header">
+              <span class="team-name">🏢 ${escapeHtml(teamName)}</span>
+              <span class="team-count">🚗 ${tripCount} поездок</span>
+              <span class="expand-icon">▼</span>
+            </div>
+            <div class="team-triples">
+              <div class="trips-list">
+        `;
+        
+        if (lastTrips.length === 0) {
+          html += '<div class="empty-trips">Нет поездок</div>';
+        } else {
+          lastTrips.forEach(trip => {
+            html += `
+              <div class="trip-item">
+                <div class="trip-address">📍 ${escapeHtml(trip.address)}</div>
+                <div class="trip-info-preview">📝 ${escapeHtml(getTripPreview(trip.info))}</div>
+                <div class="trip-time">🕒 ${escapeHtml(trip.time)}</div>
+              </div>
+            `;
+          });
+        }
+        
+        html += `
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      teamsStats.innerHTML = html;
+    })
+    .catch(err => {
+      console.error('Error loading teams stats:', err);
+      document.getElementById('teamsStats').innerHTML = '<div class="empty-history">❌ Ошибка загрузки</div>';
+    });
+}
+
 function loadHistory() {
   fetch('/api/admin/history')
     .then(res => res.json())
@@ -314,17 +531,27 @@ function loadHistory() {
       }
       
       let html = '';
-      data.allTrips.slice().reverse().forEach(trip => {
+      // Показываем последние 50 поездок в обратном порядке
+      data.allTrips.slice().reverse().slice(0, 50).forEach(trip => {
         html += `
           <div class="history-item">
             <div class="history-team">🏢 ${escapeHtml(trip.team)}</div>
             <div class="history-address">📍 ${escapeHtml(trip.address)}</div>
+            <div class="history-info-preview">📝 ${escapeHtml(getTripPreview(trip.info, 30))}</div>
             <div class="history-time">🕒 ${escapeHtml(trip.time)}</div>
           </div>
         `;
       });
       historyDiv.innerHTML = html;
     });
+}
+
+function toggleTeam(card) {
+  const triplesDiv = card.querySelector('.team-triples');
+  if (triplesDiv) {
+    triplesDiv.classList.toggle('open');
+    card.classList.toggle('expanded');
+  }
 }
 
 function escapeHtml(text) {
@@ -355,12 +582,16 @@ function showToast(msg, type) {
   setTimeout(() => toast.remove(), 2500);
 }
 
+// Обновляем данные каждые 2 секунды
 setInterval(() => {
   loadStatus();
+  loadTeamsStats();
   loadHistory();
-}, 1000);
+}, 2000);
 
+// Первоначальная загрузка
 loadStatus();
+loadTeamsStats();
 loadHistory();
 </script>
 </body>
