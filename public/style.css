@@ -1,253 +1,205 @@
-// ================= GLOBAL =================
-let isGameRunning = false;
-let endTime = null;
-let teamCode = '';
-let isAdmin = false;
-let tripCounter = 0;
-const ADMIN_PASSWORD = 'admin123';
-
-let gameInterval = null;
-let adminInterval = null;
-
-// ================= LOGIN =================
-async function login() {
-  const code = document.getElementById('teamCode').value.trim();
-  const pass = document.getElementById('adminPass').value.trim();
-
-  if(pass === ADMIN_PASSWORD) {
-    isAdmin = true;
-    try {
-      const res = await fetch('/api/admin/history');
-      const data = await res.json();
-      updateAdminTable(data.allTrips || []);
-      showAdminScreen();
-      startAdminUpdates();
-    } catch (err) {
-      alert('Ошибка связи с сервером');
-    }
-  } else {
-    if(!code) return alert('Введите код команды');
-    teamCode = code;
-    
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({teamCode})
-      });
-      const data = await res.json();
-      
-      if(!data.success) return alert('Ошибка входа');
-      
-      tripCounter = data.tripsHistory.length;
-      document.getElementById('tripsLeft').textContent = tripCounter;
-      document.getElementById('teamCodeDisplay').textContent = teamCode;
-      updateHistory(data.tripsHistory);
-      showGameScreen();
-      startGameUpdates();
-    } catch (err) {
-      alert('Ошибка связи с сервером');
-    }
-  }
+/* Общие стили */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-function showAdminScreen() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('admin-screen').style.display = 'block';
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
 }
 
-function showGameScreen() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('game').style.display = 'block';
+/* Экран логина */
+#login-screen {
+  max-width: 400px;
+  margin: 50px auto;
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
 }
 
-// ================= GAME STATUS =================
-async function updateGameStatus() {
-  try {
-    const res = await fetch('/api/status');
-    const data = await res.json();
-    isGameRunning = data.isRunning;
-    endTime = data.endTime;
-    updateTimer();
-  } catch (err) {
-    console.warn('Не удалось получить статус игры');
-  }
+#login-screen h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 30px;
+  font-size: 24px;
 }
 
-function updateTimer() {
-  const timerEl = document.getElementById('timer');
-  
-  if(!isGameRunning || !endTime) {
-    timerEl.textContent = "Остановлен";
-    return;
-  }
-  
-  const diff = endTime - Date.now();
-  if(diff <= 0) {
-    isGameRunning = false;
-    timerEl.textContent = "00:00";
-    return;
-  }
-  
-  const minutes = Math.floor(diff/60000);
-  const seconds = Math.floor((diff%60000)/1000);
-  timerEl.textContent = `${minutes}:${seconds.toString().padStart(2,'0')}`;
+#login-screen input,
+#login-screen button {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 16px;
 }
 
-// ================= TRIP =================
-async function goTrip() {
-  if(!isGameRunning) return alert('Игра ещё не началась!');
-  
-  const address = document.getElementById('addressInput').value.trim();
-  if(!address) return alert('Введите адрес');
-  if(address.length < 3) return alert('Адрес слишком короткий');
-  if(address.length > 200) return alert('Адрес слишком длинный');
-
-  try {
-    const res = await fetch('/api/trip', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({teamCode, address})
-    });
-    
-    const data = await res.json();
-    
-    if(!data.success) return alert(data.info);
-    
-    tripCounter++;
-    updateTripCounter();
-    updateHistory(data.tripsHistory);
-    
-  } catch (err) {
-    alert('Ошибка связи с сервером');
-  }
+#login-screen button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
 }
 
-function updateTripCounter() {
-  const tripsEl = document.getElementById('tripsLeft');
-  tripsEl.textContent = tripCounter;
-  
-  // Рестарт анимации
-  tripsEl.classList.remove('jump');
-  void tripsEl.offsetWidth; // Форсируем reflow
-  tripsEl.classList.add('jump');
+#login-screen button:hover {
+  background: #45a049;
 }
 
-function updateHistory(history) {
-  const ul = document.getElementById('tripsHistory');
-  ul.innerHTML = '';
-  
-  // Показываем последние 20 поездок
-  history.slice(-20).reverse().forEach(h => {
-    const li = document.createElement('li');
-    li.textContent = `${h.time} — ${h.address} → ${h.info}`;
-    ul.appendChild(li);
-  });
+/* Игровой экран */
+#game {
+  max-width: 600px;
+  margin: 20px auto;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  overflow: hidden;
 }
 
-// ================= ADMIN =================
-async function adminRequest(endpoint, extraData = {}) {
-  try {
-    const res = await fetch(`/api/admin/${endpoint}`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({password: ADMIN_PASSWORD, ...extraData})
-    });
-    return await res.json();
-  } catch (err) {
-    alert('Ошибка связи с сервером');
-    return null;
-  }
+#main-info {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
 }
 
-async function startGame(minutes) {
-  const data = await adminRequest('start', { minutes });
-  if (data) alert(data.message);
+#main-info span {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 16px;
 }
 
-async function stopGame() {
-  const data = await adminRequest('stop');
-  if (data) alert(data.message);
+#main-info b {
+  font-size: 18px;
+  margin-left: 5px;
 }
 
-async function resetAllData() {
-  if(!confirm('Вы точно хотите сбросить все данные?')) return;
-  
-  const data = await adminRequest('reset');
-  if (data?.success) {
-    alert('Данные сброшены');
-    document.getElementById('adminHistory').innerHTML = '';
-  } else {
-    alert('Ошибка сброса');
-  }
+#main-info input,
+#main-info button {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
 }
 
-async function updateAdminData() {
-  try {
-    const res = await fetch('/api/admin/history');
-    const data = await res.json();
-    updateAdminTable(data.allTrips || []);
-  } catch (err) {
-    const tbody = document.getElementById('adminHistory');
-    tbody.innerHTML = '<tr><td colspan="4">Ошибка загрузки данных</td></tr>';
-  }
+#main-info input {
+  background: rgba(255,255,255,0.9);
 }
 
-function updateAdminTable(allTrips) {
-  const tbody = document.getElementById('adminHistory');
-  tbody.innerHTML = '';
-  
-  // Сортируем по времени (новые сверху)
-  allTrips.sort((a, b) => new Date(b.time) - new Date(a.time));
-  
-  allTrips.forEach(trip => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${trip.team}</td>
-      <td>${trip.time}</td>
-      <td>${trip.address}</td>
-      <td>${trip.info}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+#main-info button {
+  background: #4CAF50;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
 }
 
-// ================= UPDATES CONTROL =================
-function startGameUpdates() {
-  if (gameInterval) clearInterval(gameInterval);
-  updateGameStatus(); // Первое обновление сразу
-  gameInterval = setInterval(updateGameStatus, 1000);
+#main-info button:hover {
+  background: #45a049;
 }
 
-function startAdminUpdates() {
-  if (adminInterval) clearInterval(adminInterval);
-  updateAdminData(); // Первое обновление сразу
-  adminInterval = setInterval(updateAdminData, 2000);
+#history-box {
+  padding: 20px;
+  background: #f9f9f9;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
-function stopAllUpdates() {
-  if (gameInterval) {
-    clearInterval(gameInterval);
-    gameInterval = null;
-  }
-  if (adminInterval) {
-    clearInterval(adminInterval);
-    adminInterval = null;
-  }
+#history-box h3 {
+  margin-bottom: 15px;
+  color: #333;
 }
 
-// Очистка при уходе со страницы
-window.addEventListener('beforeunload', stopAllUpdates);
-
-// Добавить кнопку выхода (нужно добавить в HTML)
-function logout() {
-  stopAllUpdates();
-  teamCode = '';
-  isAdmin = false;
-  tripCounter = 0;
-  document.getElementById('game').style.display = 'none';
-  document.getElementById('admin-screen').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('teamCode').value = '';
-  document.getElementById('adminPass').value = '';
+#tripsHistory {
+  list-style: none;
+  padding: 0;
 }
+
+#tripsHistory li {
+  padding: 10px;
+  margin-bottom: 5px;
+  background: white;
+  border-radius: 5px;
+  border-left: 3px solid #4CAF50;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+#tripsHistory li:last-child {
+  margin-bottom: 0;
+}
+
+/* Админский экран */
+#admin-screen {
+  max-width: 800px;
+  margin: 20px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+#admin-controls {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+#admin-controls button {
+  flex: 1;
+  min-width: 120px;
+  padding: 12px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+
+#admin-controls button:hover {
+  background: #1976D2;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  background: white;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+
+th {
+  background: #f2f2f2;
+  font-weight: bold;
+}
+
+tr:hover {
+  background: #f5f5f5;
+}
+
+/* Кнопки */
+button {
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+/* Уведом
