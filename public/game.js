@@ -141,17 +141,23 @@ function goTrip() {
 }
 
 // ================= ИСТОРИЯ (обновлена для работы с <br>) =================
+// ================= ИСТОРИЯ (хронологический порядок) =================
 function updateHistory(history) {
   const ul = document.getElementById('tripsHistory');
   if (!ul) return;
-  
+
   ul.innerHTML = '';
-  
-  history.slice(-30).reverse().forEach((h, index) => {
+
+  // Сортировка по времени (старые сверху)
+  const sortedHistory = history
+    .slice(-100) // берём последние 30
+    .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+  sortedHistory.forEach((h, index) => {
     const li = document.createElement('li');
     li.style.opacity = '0';
     li.style.animation = `fadeIn 0.3s ease ${index * 0.1}s forwards`;
-    
+
     if (h.info.includes('ничего интересного')) {
       li.style.color = '#888';
       li.style.backgroundColor = '#f9f9f9';
@@ -173,15 +179,14 @@ function updateHistory(history) {
         <div style="line-height:1.6; color:#333;">${h.info}</div>
       `;
     }
-    
+
     ul.appendChild(li);
   });
-  
+
   // Автоскролл вниз
   const historyBox = document.getElementById('history-box');
   if (historyBox) historyBox.scrollTop = historyBox.scrollHeight;
 }
-
 // ================= ВЫХОД =================
 function logout() {
   stopSync();
