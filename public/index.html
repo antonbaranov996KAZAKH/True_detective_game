@@ -4,9 +4,73 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Детективная игра</title>
-  <link rel="stylesheet" href="style.css">
   <style>
-    /* Дополнительные стили для таймера */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    #login-screen, #game {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    #login-screen {
+      text-align: center;
+      max-width: 400px;
+      margin-top: 100px;
+    }
+    
+    h1 {
+      color: #667eea;
+      margin-bottom: 30px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+    }
+    
     .timer-display {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       padding: 10px 20px;
@@ -15,11 +79,11 @@
       font-weight: bold;
       font-size: 18px;
       box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-      animation: pulse 2s infinite;
     }
     
     .timer-display.active {
       background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+      animation: pulse 2s infinite;
     }
     
     .timer-display.inactive {
@@ -36,6 +100,74 @@
       font-family: monospace;
       font-size: 20px;
       letter-spacing: 2px;
+      font-weight: bold;
+    }
+    
+    #main-info {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    
+    #tripsHistory {
+      list-style: none;
+      padding: 0;
+    }
+    
+    #tripsHistory li {
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+    
+    #tripsHistory li:hover {
+      transform: translateX(5px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    }
+    
+    #history-box {
+      max-height: 500px;
+      overflow-y: auto;
+      padding: 10px;
+      background: #f0f2f5;
+      border-radius: 10px;
+    }
+    
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 8px;
+      color: white;
+      font-weight: bold;
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+    }
+    
+    .notification.success { background: #4CAF50; }
+    .notification.error { background: #f44336; }
+    .notification.info { background: #2196F3; }
+    
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    .jump {
+      animation: jump 0.5s ease;
+      display: inline-block;
+    }
+    
+    @keyframes jump {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.5); color: #4CAF50; }
+      60% { transform: scale(1.2); }
+      100% { transform: scale(1); }
     }
   </style>
 </head>
@@ -56,19 +188,22 @@
 </div>
 
 <!-- Игровой экран -->
-<div id="game">
+<div id="game" style="display:none;">
   <div id="main-info">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-      <span>Команда: <b id="teamCodeDisplay"></b></span>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+      <span style="font-size: 18px;">Команда: <b id="teamCodeDisplay"></b></span>
       <div id="timerDisplay" class="timer-display inactive">
         ⏱ Таймер: <span id="timerValue" class="timer-value">00:00</span>
       </div>
       <span id="syncIndicator" style="font-size: 12px; color: #4CAF50;">✓ Синхронизация</span>
     </div>
-    <span>Поездок: <b id="tripsLeft">0</b></span>
-    <input type="text" id="addressInput" placeholder="Введите адрес" onkeypress="if(event.key==='Enter') goTrip()">
-    <button onclick="goTrip()">🚗 Поехать</button>
-    <button onclick="logout()" style="background:#f44336;">🚪 Выйти</button>
+    
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      <span>Поездок: <b id="tripsLeft">0</b></span>
+      <input type="text" id="addressInput" placeholder="Введите адрес" onkeypress="if(event.key==='Enter') goTrip()" style="flex: 1;">
+      <button onclick="goTrip()">🚗 Поехать</button>
+      <button onclick="logout()" style="background:#f44336;">🚪 Выйти</button>
+    </div>
   </div>
 
   <div id="history-box">
@@ -77,6 +212,6 @@
   </div>
 </div>
 
-<script src="game.js"></script>
+<script src="/game.js"></script>
 </body>
 </html>
