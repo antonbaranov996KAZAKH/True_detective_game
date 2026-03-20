@@ -131,7 +131,6 @@
   .status-active { background: #4CAF50; color: white; }
   .status-inactive { background: #f44336; color: white; }
   
-  /* Таблица команд */
   .teams-stats {
     display: grid;
     gap: 16px;
@@ -233,7 +232,6 @@
     transform: rotate(180deg);
   }
   
-  /* Общая история */
   .history-list {
     max-height: 400px;
     overflow-y: auto;
@@ -380,22 +378,22 @@
 </div>
 
 <script>
-// Функция для сокращения текста до 20 символов
+// Хранилище состояния открытых команд
+let openTeams = new Set();
+
+// Функция для сокращения текста
 function truncateText(text, maxLength = 20) {
   if (!text) return '';
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + '...';
 }
 
-// Функция для получения информации из поездки (первые 20 символов)
-function getTripPreview(info) {
+function getTripPreview(info, maxLength = 20) {
   if (!info) return '';
-  // Убираем переносы строк и берем первые 20 символов
   const cleanInfo = info.replace(/\n/g, ' ').trim();
-  return truncateText(cleanInfo, 40);
+  return truncateText(cleanInfo, maxLength);
 }
 
-// Запуск таймера
 function startTimer() {
   const minutes = parseInt(document.getElementById('minutes').value) || 0;
   const seconds = parseInt(document.getElementById('seconds').value) || 0;
@@ -472,22 +470,23 @@ function loadTeamsStats() {
         teamsMap.get(trip.team).push(trip);
       });
       
-      // Сортируем команды по количеству поездок (по убыванию)
+      // Сортируем команды по количеству поездок
       const sortedTeams = Array.from(teamsMap.entries()).sort((a, b) => b[1].length - a[1].length);
       
       let html = '';
       sortedTeams.forEach(([teamName, trips]) => {
         const tripCount = trips.length;
-        const lastTrips = trips.slice(-5).reverse(); // Последние 5 поездок
+        const lastTrips = trips.slice(-5).reverse();
+        const isOpen = openTeams.has(teamName);
         
         html += `
-          <div class="team-card" onclick="toggleTeam(this)">
-            <div class="team-header">
+          <div class="team-card ${isOpen ? 'expanded' : ''}" data-team="${escapeHtml(teamName)}">
+            <div class="team-header" onclick="toggleTeam('${escapeHtml(teamName)}')">
               <span class="team-name">🏢 ${escapeHtml(teamName)}</span>
               <span class="team-count">🚗 ${tripCount} поездок</span>
               <span class="expand-icon">▼</span>
             </div>
-            <div class="team-triples">
+            <div class="team-triples ${isOpen ? 'open' : ''}">
               <div class="trips-list">
         `;
         
@@ -498,7 +497,7 @@ function loadTeamsStats() {
             html += `
               <div class="trip-item">
                 <div class="trip-address">📍 ${escapeHtml(trip.address)}</div>
-                <div class="trip-info-preview">📝 ${escapeHtml(getTripPreview(trip.info))}</div>
+                <div class="trip-info-preview">📝 ${escapeHtml(getTripPreview(trip.info, 20))}</div>
                 <div class="trip-time">🕒 ${escapeHtml(trip.time)}</div>
               </div>
             `;
@@ -531,13 +530,12 @@ function loadHistory() {
       }
       
       let html = '';
-      // Показываем последние 50 поездок в обратном порядке
       data.allTrips.slice().reverse().slice(0, 50).forEach(trip => {
         html += `
           <div class="history-item">
             <div class="history-team">🏢 ${escapeHtml(trip.team)}</div>
             <div class="history-address">📍 ${escapeHtml(trip.address)}</div>
-            <div class="history-info-preview">📝 ${escapeHtml(getTripPreview(trip.info, 40))}</div>
+            <div class="history-info-preview">📝 ${escapeHtml(getTripPreview(trip.info, 30))}</div>
             <div class="history-time">🕒 ${escapeHtml(trip.time)}</div>
           </div>
         `;
@@ -546,15 +544,32 @@ function loadHistory() {
     });
 }
 
-function toggleTeam(card) {
-  const triplesDiv = card.querySelector('.team-triples');
-  if (triplesDiv) {
-    triplesDiv.classList.toggle('open');
-    card.classList.toggle('expanded');
+// Функция для переключения состояния команды
+function toggleTeam(teamName) {
+  if (openTeams.has(teamName)) {
+    openTeams.delete(teamName);
+  } else {
+    openTeams.add(teamName);
+  }
+  
+  // Обновляем отображение конкретной карточки
+  const teamCard = document.querySelector(`.team-card[data-team="${teamName}"]`);
+  if (teamCard) {
+    const triplesDiv = teamCard.querySelector('.team-triples');
+    if (triplesDiv) {
+      if (openTeams.has(teamName)) {
+        triplesDiv.classList.add('open');
+        teamCard.classList.add('expanded');
+      } else {
+        triplesDiv.classList.remove('open');
+        teamCard.classList.remove('expanded');
+      }
+    }
   }
 }
 
 function escapeHtml(text) {
+  if (!text) return '';
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
@@ -582,17 +597,18 @@ function showToast(msg, type) {
   setTimeout(() => toast.remove(), 2500);
 }
 
-// Обновляем данные каждые 2 секунды
-setInterval(() => {
+// Обновляем данные, но сохраняем состояние открытых команд
+function refreshData() {
   loadStatus();
-  loadTeamsStats();
   loadHistory();
-}, 2000);
+  loadTeamsStats(); // После перерисовки состояние сохраняется через openTeams
+}
+
+// Обновляем каждые 2 секунды
+setInterval(refreshData, 2000);
 
 // Первоначальная загрузка
-loadStatus();
-loadTeamsStats();
-loadHistory();
+refreshData();
 </script>
 </body>
 </html>
