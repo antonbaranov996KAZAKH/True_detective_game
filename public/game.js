@@ -43,7 +43,7 @@ function updateTimerDisplay() {
 
 // ================= ЛОГИН =================
 function login() {
-  const code = document.getElementById('teamCode')?.value.trim();
+  const code = document.getElementById('teamCode')?.value.trim().toUpperCase();
   const pass = document.getElementById('adminPass')?.value.trim();
 
   if (pass) {
@@ -132,7 +132,7 @@ function goTrip() {
     return;
   }
 
-  const goButton = document.querySelector('#main-info button:first-of-type');
+  const goButton = document.querySelector('#main-info .input-group button:first-of-type');
   const originalText = goButton.textContent;
   goButton.disabled = true;
   goButton.textContent = '⏳ Отправка...';
@@ -141,7 +141,7 @@ function goTrip() {
     .then(res => res.json())
     .then(timerData => {
       if (!timerData.active || timerData.timeLeft <= 0) {
-        showNotification('⏰ Игровое время не активно! Дождитесь запуска таймера администратором.', 'error');
+        showNotification('⏰ Игровое время не активно! Дождитесь запуска таймера.', 'error');
         throw new Error('Таймер не активен');
       }
       
@@ -163,7 +163,7 @@ function goTrip() {
         return;
       }
       
-      showNotification('✅ ' + data.info, 'success');
+      showNotification('✅ ' + (data.info.length > 100 ? data.info.substring(0, 100) + '...' : data.info), 'success');
       
       tripCounter = data.tripsHistory.length;
       const tripsEl = document.getElementById('tripsLeft');
@@ -175,6 +175,9 @@ function goTrip() {
       
       updateHistory(data.tripsHistory);
       document.getElementById('addressInput').value = '';
+      
+      // Скрываем клавиатуру на мобильных
+      document.getElementById('addressInput').blur();
     })
     .catch(err => {
       if (err.message !== 'Таймер не активен') {
@@ -195,33 +198,50 @@ function updateHistory(history) {
   ul.innerHTML = '';
 
   const sortedHistory = history
-    .slice(-100)
+    .slice(-50)
     .sort((a, b) => new Date(a.time) - new Date(b.time));
 
   sortedHistory.forEach((h, index) => {
     const li = document.createElement('li');
     li.style.opacity = '0';
-    li.style.animation = `fadeIn 0.3s ease ${index * 0.1}s forwards`;
+    li.style.animation = `fadeIn 0.2s ease ${Math.min(index * 0.05, 0.5)}s forwards`;
 
-    if (h.info.includes('ничего интересного')) {
-      li.style.color = '#888';
-      li.style.backgroundColor = '#f9f9f9';
+    // Форматируем информацию для мобильных
+    let displayInfo = h.info;
+    if (displayInfo.length > 150) {
+      displayInfo = displayInfo.substring(0, 150) + '...';
+    }
+    displayInfo = displayInfo.replace(/\n/g, '<br>');
+
+    if (displayInfo.includes('не найден')) {
+      li.style.borderLeft = '4px solid #ff9800';
+      li.style.backgroundColor = '#fff3e0';
       li.innerHTML = `
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color:#888;">${h.address}</span>
-          <span style="color:#999; font-size:0.9em;">${h.time}</span>
+        <div style="margin-bottom: 8px;">
+          <strong style="color:#ff9800;">📍 ${escapeHtml(h.address)}</strong>
         </div>
-        <div style="margin-top:5px; font-style:italic;">${h.info}</div>
+        <div style="font-size: 13px; color:#666; word-break:break-word;">${displayInfo}</div>
+        <div style="font-size: 10px; color:#999; margin-top: 8px;">${escapeHtml(h.time)}</div>
+      `;
+    } else if (displayInfo.includes('📝') || displayInfo.includes('🔍')) {
+      li.style.borderLeft = '4px solid #4CAF50';
+      li.style.backgroundColor = '#e8f5e9';
+      li.innerHTML = `
+        <div style="margin-bottom: 8px;">
+          <strong style="color:#2196F3;">📍 ${escapeHtml(h.address)}</strong>
+        </div>
+        <div style="font-size: 13px; color:#333; word-break:break-word;">${displayInfo}</div>
+        <div style="font-size: 10px; color:#999; margin-top: 8px;">${escapeHtml(h.time)}</div>
       `;
     } else {
-      li.style.borderLeft = '4px solid #4CAF50';
+      li.style.borderLeft = '4px solid #ccc';
       li.style.backgroundColor = '#ffffff';
       li.innerHTML = `
-        <div style="display: flex; justify-content: space-between; margin-bottom:8px;">
-          <strong style="color:#2196F3; font-size:1.1em;">${h.address}</strong>
-          <span style="color:#666; font-size:0.9em;">${h.time}</span>
+        <div style="margin-bottom: 8px;">
+          <strong>${escapeHtml(h.address)}</strong>
         </div>
-        <div style="line-height:1.6; color:#333;">${h.info}</div>
+        <div style="font-size: 13px; color:#666; word-break:break-word;">${displayInfo}</div>
+        <div style="font-size: 10px; color:#999; margin-top: 8px;">${escapeHtml(h.time)}</div>
       `;
     }
 
@@ -232,6 +252,12 @@ function updateHistory(history) {
   if (historyBox) historyBox.scrollTop = historyBox.scrollHeight;
 }
 
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // ================= ВЫХОД =================
 function logout() {
   stopSync();
@@ -239,7 +265,7 @@ function logout() {
   tripCounter = 0;
   
   document.getElementById('game').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-screen').style.display = 'block';
   document.getElementById('teamCode').value = '';
   document.getElementById('adminPass').value = '';
   document.getElementById('addressInput').value = '';
@@ -249,16 +275,26 @@ function logout() {
 
 // ================= ИНИЦИАЛИЗАЦИЯ =================
 window.addEventListener('load', () => {
-  console.log('🚀 Детективная игра загружена');
+  console.log('🚀 Детективная игра загружена (мобильная версия)');
   
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  `;
-  document.head.appendChild(style);
+  // Добавляем стили для анимаций если их нет
+  if (!document.querySelector('#mobile-styles')) {
+    const style = document.createElement('style');
+    style.id = 'mobile-styles';
+    style.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  // Автофокус на поле ввода кода
+  setTimeout(() => {
+    const teamCodeInput = document.getElementById('teamCode');
+    if (teamCodeInput) teamCodeInput.focus();
+  }, 100);
 });
 
 window.addEventListener('beforeunload', () => {
