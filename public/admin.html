@@ -1,6 +1,81 @@
-[
-  {
-    "address": "тест",
-    "info": "Это тестовый адрес"
-  }
-]
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Админка</title>
+<style>
+body { font-family: Arial; background:#111; color:#fff; padding:20px }
+input,button { padding:10px; margin:5px }
+button { cursor:pointer }
+</style>
+</head>
+<body>
+
+<h2>🎛 Управление игрой</h2>
+
+<input type="number" id="minutes" placeholder="Минуты">
+<button onclick="startGame()">▶ Старт</button>
+<button onclick="stopGame()">⏹ Стоп</button>
+
+<h3 id="status">Статус: ...</h3>
+<h3 id="timer">Таймер: ...</h3>
+
+<hr>
+
+<h2>📊 История</h2>
+<div id="history"></div>
+
+<script>
+function startGame() {
+  const minutes = document.getElementById('minutes').value;
+
+  fetch('/api/admin/start', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({minutes})
+  });
+}
+
+function stopGame() {
+  fetch('/api/admin/stop', { method:'POST' });
+}
+
+function loadStatus() {
+  fetch('/api/status')
+    .then(r=>r.json())
+    .then(data=>{
+      document.getElementById('status').innerText =
+        data.active ? '🟢 Игра идёт' : '🔴 Остановлена';
+
+      if (data.active) {
+        const sec = Math.floor(data.timeLeft / 1000);
+        document.getElementById('timer').innerText =
+          '⏳ Осталось: ' + sec + ' сек';
+      } else {
+        document.getElementById('timer').innerText = '';
+      }
+    });
+}
+
+function loadHistory() {
+  fetch('/api/admin/history')
+    .then(r=>r.json())
+    .then(data=>{
+      let html = '';
+
+      data.allTrips.slice(0,50).forEach(t=>{
+        html += `<p><b>${t.team}</b>: ${t.address}</p>`;
+      });
+
+      document.getElementById('history').innerHTML = html;
+    });
+}
+
+setInterval(()=>{
+  loadStatus();
+  loadHistory();
+},1000);
+</script>
+
+</body>
+</html>
