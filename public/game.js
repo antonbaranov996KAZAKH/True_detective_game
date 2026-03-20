@@ -33,9 +33,6 @@ function updateTimerDisplay() {
         const seconds = data.timeLeft % 60;
         timerValue.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         timerDisplay.className = 'timer-display active';
-      } else if (data.active && data.timeLeft <= 0) {
-        timerValue.textContent = '00:00';
-        timerDisplay.className = 'timer-display inactive';
       } else {
         timerValue.textContent = '00:00';
         timerDisplay.className = 'timer-display inactive';
@@ -50,7 +47,7 @@ function login() {
   const pass = document.getElementById('adminPass')?.value.trim();
 
   if (pass) {
-    window.location.href = '/admin.php';
+    window.location.href = '/admin.html';
     return;
   }
 
@@ -83,10 +80,8 @@ function login() {
     
     showNotification(`Добро пожаловать, команда ${teamCode}!`, 'success');
     
-    // Запускаем синхронизацию
     startSync();
     
-    // Запускаем обновление таймера
     if (timerUpdateInterval) clearInterval(timerUpdateInterval);
     timerUpdateInterval = setInterval(updateTimerDisplay, 1000);
     updateTimerDisplay();
@@ -120,7 +115,6 @@ function syncTeamData() {
       if (data.success) {
         const currentLength = document.getElementById('tripsHistory').children.length;
         if (data.tripsHistory.length !== currentLength) {
-          console.log('🔄 Обновление данных...');
           updateHistory(data.tripsHistory);
           tripCounter = data.tripsHistory.length;
           document.getElementById('tripsLeft').textContent = tripCounter;
@@ -130,7 +124,7 @@ function syncTeamData() {
     .catch(err => console.warn('Ошибка синхронизации:', err));
 }
 
-// ================= ПОЕЗДКА (с проверкой таймера) =================
+// ================= ПОЕЗДКА =================
 function goTrip() {
   const address = document.getElementById('addressInput').value.trim();
   if(!address) {
@@ -143,7 +137,6 @@ function goTrip() {
   goButton.disabled = true;
   goButton.textContent = '⏳ Отправка...';
 
-  // Сначала проверяем статус таймера
   fetch('/api/timer/status')
     .then(res => res.json())
     .then(timerData => {
@@ -152,7 +145,6 @@ function goTrip() {
         throw new Error('Таймер не активен');
       }
       
-      // Если таймер активен, отправляем поездку
       return fetch('/api/trip', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -177,7 +169,6 @@ function goTrip() {
       const tripsEl = document.getElementById('tripsLeft');
       tripsEl.textContent = tripCounter;
       
-      // Анимация
       tripsEl.classList.remove('jump');
       void tripsEl.offsetWidth;
       tripsEl.classList.add('jump');
@@ -203,7 +194,6 @@ function updateHistory(history) {
 
   ul.innerHTML = '';
 
-  // Сортировка по времени (старые сверху)
   const sortedHistory = history
     .slice(-100)
     .sort((a, b) => new Date(a.time) - new Date(b.time));
@@ -238,7 +228,6 @@ function updateHistory(history) {
     ul.appendChild(li);
   });
 
-  // Автоскролл вниз
   const historyBox = document.getElementById('history-box');
   if (historyBox) historyBox.scrollTop = historyBox.scrollHeight;
 }
@@ -262,80 +251,16 @@ function logout() {
 window.addEventListener('load', () => {
   console.log('🚀 Детективная игра загружена');
   
-  // Добавляем стили
-  if (!document.querySelector('#game-styles')) {
-    const style = document.createElement('style');
-    style.id = 'game-styles';
-    style.textContent = `
-      .notification {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 20px;
-        border-radius: 5px;
-        color: white;
-        font-weight: bold;
-        z-index: 1000;
-        animation: slideIn 0.3s ease;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-      }
-      .notification.success { background: #4CAF50; }
-      .notification.error { background: #f44336; }
-      .notification.info { background: #2196F3; }
-      
-      @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-      }
-      
-      .jump {
-        animation: jump 0.5s ease;
-        display: inline-block;
-      }
-      
-      @keyframes jump {
-        0% { transform: scale(1); }
-        30% { transform: scale(1.5); color: #4CAF50; }
-        60% { transform: scale(1.2); }
-        100% { transform: scale(1); }
-      }
-      
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      
-      #tripsHistory {
-        list-style: none;
-        padding: 0;
-      }
-      
-      #tripsHistory li {
-        padding: 15px;
-        margin-bottom: 10px;
-        border-radius: 8px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        transition: all 0.3s ease;
-      }
-      
-      #tripsHistory li:hover {
-        transform: translateX(5px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.15);
-      }
-      
-      #history-box {
-        max-height: 500px;
-        overflow-y: auto;
-        padding: 10px;
-        background: #f0f2f5;
-        border-radius: 10px;
-      }
-    `;
-    document.head.appendChild(style);
-  }
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  `;
+  document.head.appendChild(style);
 });
 
-// Очистка при закрытии
 window.addEventListener('beforeunload', () => {
   stopSync();
 });
