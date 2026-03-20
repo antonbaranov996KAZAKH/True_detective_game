@@ -392,7 +392,7 @@ function getTripPreview(info) {
   if (!info) return '';
   // Убираем переносы строк и берем первые 20 символов
   const cleanInfo = info.replace(/\n/g, ' ').trim();
-  return truncateText(cleanInfo, 20);
+  return truncateText(cleanInfo, 40);
 }
 
 // Запуск таймера
@@ -537,7 +537,7 @@ function loadHistory() {
           <div class="history-item">
             <div class="history-team">🏢 ${escapeHtml(trip.team)}</div>
             <div class="history-address">📍 ${escapeHtml(trip.address)}</div>
-            <div class="history-info-preview">📝 ${escapeHtml(getTripPreview(trip.info, 30))}</div>
+            <div class="history-info-preview">📝 ${escapeHtml(getTripPreview(trip.info, 40))}</div>
             <div class="history-time">🕒 ${escapeHtml(trip.time)}</div>
           </div>
         `;
