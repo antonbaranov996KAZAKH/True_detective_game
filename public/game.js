@@ -198,7 +198,7 @@ function updateHistory(history) {
   ul.innerHTML = '';
 
   const sortedHistory = history
-    .slice(-50)
+    .slice(-30)
     .sort((a, b) => new Date(a.time) - new Date(b.time));
 
   sortedHistory.forEach((h, index) => {
@@ -206,14 +206,15 @@ function updateHistory(history) {
     li.style.opacity = '0';
     li.style.animation = `fadeIn 0.2s ease ${Math.min(index * 0.05, 0.5)}s forwards`;
 
-    // Форматируем информацию для мобильных
+    // Сокращаем очень длинный текст для мобильных
     let displayInfo = h.info;
-    if (displayInfo.length > 150) {
-      displayInfo = displayInfo.substring(0, 150) + '...';
+    const maxLength = 300;
+    if (displayInfo.length > maxLength) {
+      displayInfo = displayInfo.substring(0, maxLength) + '...\n\n[Продолжение следует]';
     }
     displayInfo = displayInfo.replace(/\n/g, '<br>');
 
-    if (displayInfo.includes('не найден')) {
+    if (!h.found && displayInfo.includes('нет информации')) {
       li.style.borderLeft = '4px solid #ff9800';
       li.style.backgroundColor = '#fff3e0';
       li.innerHTML = `
@@ -223,14 +224,14 @@ function updateHistory(history) {
         <div style="font-size: 13px; color:#666; word-break:break-word;">${displayInfo}</div>
         <div style="font-size: 10px; color:#999; margin-top: 8px;">${escapeHtml(h.time)}</div>
       `;
-    } else if (displayInfo.includes('📝') || displayInfo.includes('🔍')) {
+    } else if (h.found) {
       li.style.borderLeft = '4px solid #4CAF50';
       li.style.backgroundColor = '#e8f5e9';
       li.innerHTML = `
         <div style="margin-bottom: 8px;">
           <strong style="color:#2196F3;">📍 ${escapeHtml(h.address)}</strong>
         </div>
-        <div style="font-size: 13px; color:#333; word-break:break-word;">${displayInfo}</div>
+        <div style="font-size: 13px; color:#333; word-break:break-word; line-height:1.5;">${displayInfo}</div>
         <div style="font-size: 10px; color:#999; margin-top: 8px;">${escapeHtml(h.time)}</div>
       `;
     } else {
