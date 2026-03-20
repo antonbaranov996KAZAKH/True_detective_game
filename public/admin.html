@@ -2,80 +2,429 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Админка</title>
+<title>Админка - Управление игрой</title>
 <style>
-body { font-family: Arial; background:#111; color:#fff; padding:20px }
-input,button { padding:10px; margin:5px }
-button { cursor:pointer }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+  color: #333;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Карточки */
+.card {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  padding: 25px;
+  margin-bottom: 25px;
+  transition: transform 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.card h2 {
+  color: #667eea;
+  margin-bottom: 20px;
+  font-size: 24px;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 10px;
+  display: inline-block;
+}
+
+/* Таймер-панель */
+.timer-panel {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 25px;
+}
+
+.timer-controls {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-top: 20px;
+}
+
+.time-input-group {
+  background: rgba(255,255,255,0.2);
+  padding: 15px;
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.time-input-group label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 5px;
+  opacity: 0.9;
+}
+
+.time-input-group input {
+  padding: 10px;
+  font-size: 20px;
+  width: 100px;
+  border: none;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+  background: white;
+  color: #667eea;
+}
+
+.time-input-group input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.5);
+}
+
+/* Кнопки */
+.btn {
+  padding: 12px 25px;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-start {
+  background: #4CAF50;
+}
+.btn-start:hover {
+  background: #45a049;
+}
+
+.btn-stop {
+  background: #f44336;
+}
+.btn-stop:hover {
+  background: #da190b;
+}
+
+.btn-reset {
+  background: #ff9800;
+}
+.btn-reset:hover {
+  background: #e68900;
+}
+
+.timer-status {
+  font-size: 32px;
+  font-weight: bold;
+  margin: 20px 0;
+  text-align: center;
+  font-family: monospace;
+  letter-spacing: 2px;
+}
+
+.timer-status.active {
+  color: #4CAF50;
+  text-shadow: 0 0 10px rgba(76,175,80,0.5);
+}
+
+.timer-status.inactive {
+  color: #f44336;
+}
+
+/* История */
+.history-list {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.history-item {
+  background: #f8f9fa;
+  border-left: 4px solid #667eea;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.history-item:hover {
+  background: #e9ecef;
+  transform: translateX(5px);
+}
+
+.history-team {
+  font-weight: bold;
+  color: #667eea;
+}
+
+.history-address {
+  color: #666;
+  margin-top: 5px;
+}
+
+.history-time {
+  font-size: 12px;
+  color: #999;
+  margin-top: 5px;
+}
+
+/* Статус */
+.status-badge {
+  display: inline-block;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.status-active {
+  background: #4CAF50;
+  color: white;
+}
+
+.status-inactive {
+  background: #f44336;
+  color: white;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .timer-controls {
+    flex-direction: column;
+  }
+  
+  .time-input-group {
+    width: 100%;
+  }
+  
+  .time-input-group input {
+    width: 100%;
+  }
+  
+  .btn {
+    width: 100%;
+  }
+}
 </style>
 </head>
 <body>
+<div class="container">
+  <div class="timer-panel">
+    <h2 style="color: white; border-bottom-color: white;">⏱ Управление игровым временем</h2>
+    
+    <div class="timer-controls">
+      <div class="time-input-group">
+        <label>Минуты</label>
+        <input type="number" id="minutes" min="0" max="60" value="5" placeholder="Мин">
+      </div>
+      <div class="time-input-group">
+        <label>Секунды</label>
+        <input type="number" id="seconds" min="0" max="59" value="0" placeholder="Сек">
+      </div>
+      <button class="btn btn-start" onclick="startTimer()">▶ Старт</button>
+      <button class="btn btn-stop" onclick="stopTimer()">⏹ Стоп</button>
+      <button class="btn btn-reset" onclick="resetTimer()">🔄 Сброс</button>
+    </div>
+    
+    <div class="timer-status" id="timerStatus">
+      ⏳ Таймер неактивен
+    </div>
+  </div>
 
-<h2>🎛 Управление игрой</h2>
+  <div class="card">
+    <h2>🎮 Статус игры</h2>
+    <div style="margin-top: 20px;">
+      <span class="status-badge" id="gameStatus">Загрузка...</span>
+    </div>
+  </div>
 
-<input type="number" id="minutes" placeholder="Минуты">
-<button onclick="startGame()">▶ Старт</button>
-<button onclick="stopGame()">⏹ Стоп</button>
-
-<h3 id="status">Статус: ...</h3>
-<h3 id="timer">Таймер: ...</h3>
-
-<hr>
-
-<h2>📊 История</h2>
-<div id="history"></div>
+  <div class="card">
+    <h2>📊 История всех поездок</h2>
+    <div id="history" class="history-list">
+      Загрузка...
+    </div>
+  </div>
+</div>
 
 <script>
-function startGame() {
-  const minutes = document.getElementById('minutes').value;
-
-  fetch('/api/admin/start', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({minutes})
-  });
+// Функции управления таймером
+function startTimer() {
+  const minutes = parseInt(document.getElementById('minutes').value) || 0;
+  const seconds = parseInt(document.getElementById('seconds').value) || 0;
+  const totalSeconds = (minutes * 60) + seconds;
+  
+  if (totalSeconds <= 0) {
+    alert('Пожалуйста, установите время больше 0 секунд');
+    return;
+  }
+  
+  fetch('/api/timer/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({minutes, seconds: totalSeconds})
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showMessage('Таймер запущен!', 'success');
+      loadStatus();
+    } else {
+      showMessage('Ошибка запуска таймера', 'error');
+    }
+  })
+  .catch(err => showMessage('Ошибка связи с сервером', 'error'));
 }
 
-function stopGame() {
-  fetch('/api/admin/stop', { method:'POST' });
+function stopTimer() {
+  fetch('/api/timer/stop', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'}
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showMessage('Таймер остановлен', 'success');
+      loadStatus();
+    } else {
+      showMessage('Ошибка остановки таймера', 'error');
+    }
+  })
+  .catch(err => showMessage('Ошибка связи с сервером', 'error'));
+}
+
+function resetTimer() {
+  fetch('/api/timer/reset', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'}
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showMessage('Таймер сброшен', 'success');
+      loadStatus();
+    } else {
+      showMessage('Ошибка сброса таймера', 'error');
+    }
+  })
+  .catch(err => showMessage('Ошибка связи с сервером', 'error'));
 }
 
 function loadStatus() {
-  fetch('/api/status')
-    .then(r=>r.json())
-    .then(data=>{
-      document.getElementById('status').innerText =
-        data.active ? '🟢 Игра идёт' : '🔴 Остановлена';
-
+  fetch('/api/timer/status')
+    .then(res => res.json())
+    .then(data => {
+      // Обновляем статус таймера
+      const statusEl = document.getElementById('timerStatus');
+      const gameStatusEl = document.getElementById('gameStatus');
+      
       if (data.active) {
-        const sec = Math.floor(data.timeLeft / 1000);
-        document.getElementById('timer').innerText =
-          '⏳ Осталось: ' + sec + ' сек';
+        const minutes = Math.floor(data.timeLeft / 60);
+        const seconds = data.timeLeft % 60;
+        statusEl.innerHTML = `⏱ Активен: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        statusEl.className = 'timer-status active';
+        gameStatusEl.innerHTML = '<span class="status-badge status-active">🟢 Игра активна</span>';
       } else {
-        document.getElementById('timer').innerText = '';
+        statusEl.innerHTML = '⏸ Таймер неактивен';
+        statusEl.className = 'timer-status inactive';
+        gameStatusEl.innerHTML = '<span class="status-badge status-inactive">🔴 Игра остановлена</span>';
       }
-    });
+    })
+    .catch(err => console.warn('Ошибка загрузки статуса:', err));
 }
 
 function loadHistory() {
   fetch('/api/admin/history')
-    .then(r=>r.json())
-    .then(data=>{
+    .then(res => res.json())
+    .then(data => {
+      const historyDiv = document.getElementById('history');
+      if (!data.allTrips || data.allTrips.length === 0) {
+        historyDiv.innerHTML = '<p style="text-align:center; color:#999;">Пока нет поездок</p>';
+        return;
+      }
+      
       let html = '';
-
-      data.allTrips.slice(0,50).forEach(t=>{
-        html += `<p><b>${t.team}</b>: ${t.address}</p>`;
+      data.allTrips.slice().reverse().forEach(trip => {
+        html += `
+          <div class="history-item">
+            <div class="history-team">🏢 ${trip.team}</div>
+            <div class="history-address">📍 ${trip.address}</div>
+            <div class="history-time">🕒 ${trip.time}</div>
+          </div>
+        `;
       });
-
-      document.getElementById('history').innerHTML = html;
-    });
+      historyDiv.innerHTML = html;
+    })
+    .catch(err => console.warn('Ошибка загрузки истории:', err));
 }
 
-setInterval(()=>{
+function showMessage(msg, type) {
+  // Простое уведомление
+  const notification = document.createElement('div');
+  notification.textContent = msg;
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    background: ${type === 'success' ? '#4CAF50' : '#f44336'};
+    color: white;
+    border-radius: 8px;
+    z-index: 1000;
+    animation: slideIn 0.3s ease;
+  `;
+  document.body.appendChild(notification);
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+
+// Добавляем стили для анимации
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+`;
+document.head.appendChild(style);
+
+// Загружаем данные каждую секунду
+setInterval(() => {
   loadStatus();
   loadHistory();
-},1000);
-</script>
+}, 1000);
 
+// Первоначальная загрузка
+loadStatus();
+loadHistory();
+</script>
 </body>
 </html>
