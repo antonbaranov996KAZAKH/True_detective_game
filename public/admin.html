@@ -131,6 +131,71 @@
   .status-active { background: #4CAF50; color: white; }
   .status-inactive { background: #f44336; color: white; }
   
+  .quick-controls {
+    background: #f0f2f5;
+    border-radius: 16px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  
+  .quick-controls-title {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  
+  .quick-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .quick-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+    min-width: 80px;
+  }
+  
+  .quick-btn:active {
+    transform: scale(0.97);
+  }
+  
+  .quick-btn-start { background: #4CAF50; color: white; }
+  .quick-btn-stop { background: #f44336; color: white; }
+  .quick-btn-reset { background: #ff9800; color: white; }
+  .quick-btn-1min { background: #2196F3; color: white; }
+  .quick-btn-3min { background: #2196F3; color: white; }
+  .quick-btn-5min { background: #2196F3; color: white; }
+  
+  .time-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  
+  .time-input-small {
+    flex: 1;
+    min-width: 80px;
+  }
+  
+  .time-input-small input {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    text-align: center;
+  }
+  
   .teams-stats {
     display: grid;
     gap: 16px;
@@ -311,6 +376,14 @@
     .team-count {
       font-size: 12px;
     }
+    
+    .quick-buttons {
+      flex-direction: column;
+    }
+    
+    .time-input-row {
+      flex-direction: column;
+    }
   }
   
   @keyframes slideIn {
@@ -360,6 +433,29 @@
     <div style="margin-top: 12px;">
       <span class="status-badge" id="gameStatus">Загрузка...</span>
     </div>
+    
+    <!-- БЫСТРОЕ УПРАВЛЕНИЕ ТАЙМЕРОМ -->
+    <div class="quick-controls">
+      <div class="quick-controls-title">⚡ Быстрое управление таймером</div>
+      <div class="time-input-row">
+        <div class="time-input-small">
+          <input type="number" id="quickMinutes" placeholder="Мин" value="5" min="0" max="60">
+        </div>
+        <div class="time-input-small">
+          <input type="number" id="quickSeconds" placeholder="Сек" value="0" min="0" max="59">
+        </div>
+        <button class="quick-btn quick-btn-start" onclick="quickStartTimer()">▶ Старт</button>
+        <button class="quick-btn quick-btn-stop" onclick="quickStopTimer()">⏹ Стоп</button>
+        <button class="quick-btn quick-btn-reset" onclick="quickResetTimer()">🔄 Сброс</button>
+      </div>
+      <div class="quick-buttons">
+        <button class="quick-btn quick-btn-1min" onclick="setQuickTime(1, 0)">1 мин</button>
+        <button class="quick-btn quick-btn-3min" onclick="setQuickTime(3, 0)">3 мин</button>
+        <button class="quick-btn quick-btn-5min" onclick="setQuickTime(5, 0)">5 мин</button>
+        <button class="quick-btn quick-btn-10min" onclick="setQuickTime(10, 0)" style="background:#2196F3;">10 мин</button>
+        <button class="quick-btn quick-btn-15min" onclick="setQuickTime(15, 0)" style="background:#2196F3;">15 мин</button>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -394,6 +490,7 @@ function getTripPreview(info, maxLength = 20) {
   return truncateText(cleanInfo, maxLength);
 }
 
+// Основные функции управления таймером
 function startTimer() {
   const minutes = parseInt(document.getElementById('minutes').value) || 0;
   const seconds = parseInt(document.getElementById('seconds').value) || 0;
@@ -408,9 +505,11 @@ function startTimer() {
     if (data.success) {
       showToast('✅ Таймер запущен!', 'success');
       loadStatus();
+    } else {
+      showToast('❌ Ошибка запуска', 'error');
     }
   })
-  .catch(() => showToast('❌ Ошибка', 'error'));
+  .catch(() => showToast('❌ Ошибка сервера', 'error'));
 }
 
 function stopTimer() {
@@ -418,7 +517,8 @@ function stopTimer() {
     .then(() => {
       showToast('⏸ Таймер остановлен', 'success');
       loadStatus();
-    });
+    })
+    .catch(() => showToast('❌ Ошибка', 'error'));
 }
 
 function resetTimer() {
@@ -426,7 +526,57 @@ function resetTimer() {
     .then(() => {
       showToast('🔄 Таймер сброшен', 'success');
       loadStatus();
-    });
+    })
+    .catch(() => showToast('❌ Ошибка', 'error'));
+}
+
+// Быстрые функции управления таймером
+function quickStartTimer() {
+  const minutes = parseInt(document.getElementById('quickMinutes').value) || 0;
+  const seconds = parseInt(document.getElementById('quickSeconds').value) || 0;
+  
+  fetch('/api/timer/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ minutes, seconds })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showToast(`✅ Таймер запущен на ${minutes}:${seconds.toString().padStart(2, '0')}`, 'success');
+      loadStatus();
+      // Обновляем значения в основном блоке
+      document.getElementById('minutes').value = minutes;
+      document.getElementById('seconds').value = seconds;
+    } else {
+      showToast('❌ Ошибка запуска', 'error');
+    }
+  })
+  .catch(() => showToast('❌ Ошибка сервера', 'error'));
+}
+
+function quickStopTimer() {
+  fetch('/api/timer/stop', { method: 'POST' })
+    .then(() => {
+      showToast('⏸ Таймер остановлен', 'success');
+      loadStatus();
+    })
+    .catch(() => showToast('❌ Ошибка', 'error'));
+}
+
+function quickResetTimer() {
+  fetch('/api/timer/reset', { method: 'POST' })
+    .then(() => {
+      showToast('🔄 Таймер сброшен', 'success');
+      loadStatus();
+    })
+    .catch(() => showToast('❌ Ошибка', 'error'));
+}
+
+function setQuickTime(minutes, seconds) {
+  document.getElementById('quickMinutes').value = minutes;
+  document.getElementById('quickSeconds').value = seconds;
+  quickStartTimer();
 }
 
 function loadStatus() {
@@ -447,7 +597,8 @@ function loadStatus() {
         statusEl.className = 'timer-status inactive';
         gameStatusEl.innerHTML = '<span class="status-badge status-inactive">🔴 Игра остановлена</span>';
       }
-    });
+    })
+    .catch(err => console.warn('Ошибка загрузки статуса:', err));
 }
 
 function loadTeamsStats() {
@@ -601,7 +752,7 @@ function showToast(msg, type) {
 function refreshData() {
   loadStatus();
   loadHistory();
-  loadTeamsStats(); // После перерисовки состояние сохраняется через openTeams
+  loadTeamsStats();
 }
 
 // Обновляем каждые 2 секунды
